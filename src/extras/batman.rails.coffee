@@ -64,10 +64,12 @@ class Batman.RailsStorage extends Batman.RestStorage
       return url
     url + '.json'
 
-  _errorsFrom422Response: (response) ->
+  _errorsFromFailedResponse: (response) ->
     parsedResponse = JSON.parse(response)
     if 'errors' of parsedResponse
       parsedResponse.errors
+    else if 'error' of parsedResponse
+      {"": [parsedResponse.error]}
     else
       parsedResponse
 
@@ -91,9 +93,9 @@ class Batman.RailsStorage extends Batman.RestStorage
     {error, response} = env
     if error
       # Rails validation errors
-      if error instanceof Batman.StorageAdapter.UnprocessableRecordError
+      if error instanceof Batman.StorageAdapter.UnprocessableRecordError || error instanceof Batman.StorageAdapter.UnauthorizedError
         try
-          validationErrors = @_errorsFrom422Response(response)
+          validationErrors = @_errorsFromFailedResponse(response)
         catch extractionError
           env.error = extractionError
           return next()

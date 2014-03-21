@@ -21,6 +21,11 @@ QUnit.module "Batman.RailsStorage",
     @productAdapter = new Batman.RailsStorage(@Product)
     @Product.persist @productAdapter
 
+    class @Session extends Batman.Model
+      @encode 'email', 'password'
+    @sessionAdapter = new Batman.RailsStorage(@Session)
+    @Session.persist @sessionAdapter
+
     @adapter = @productAdapter # for restStorageHelpers
 
   teardown: ->
@@ -61,4 +66,20 @@ asyncTest 'creating in storage: should callback with the record with errors on i
     ok err instanceof Batman.ErrorsSet
     ok record
     equal record.get('errors').length, 2
+    QUnit.start()
+
+asyncTest 'creating in storage: should callback with the record with errors on it if server side authorization fails (e.g. failed user authentication on a form)', ->
+  helpers.MockRequest.expect
+    url: '/sessions'
+    method: 'POST'
+  , error:
+      status: 401
+      response: JSON.stringify
+        error: "Invalid email or password."
+
+  session = new @Session(email: "email@example.com", password: "invalid")
+  @sessionAdapter.perform 'create', session, {}, (err, record) =>
+    ok err instanceof Batman.ErrorsSet
+    ok record
+    equal record.get('errors').length, 1
     QUnit.start()
